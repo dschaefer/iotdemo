@@ -12,12 +12,11 @@ HEADERS += src/AWSIoTClient.h
 
 qml.files = src/main.qml
 
-AWSIOT = ../../../mqtt/org.eclipse.paho.mqtt.c
+PAHO = ../../../paho.mqtt.c
 
-INCLUDEPATH += $$AWSIOT/src
+INCLUDEPATH += $$PAHO/src
 
-macx:LIBS += -L$$AWSIOT/build/macosx -L/usr/local/opt/openssl/lib
-
+macx:LIBS += -L$$PAHO/build/macosx -L/usr/local/opt/openssl/lib
 LIBS += -lpaho-mqtt3cs -lssl -lcrypto
 
 DEFINES += OPENSSL
