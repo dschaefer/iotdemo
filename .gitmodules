@@ -1,3 +1,3 @@
 [submodule "paho.mqtt.c"]
 	path = paho.mqtt.c
-	url = git@github.com:dschaefer/iotdemo.git
+	url = git@github.com:dschaefer/paho.mqtt.c.git
