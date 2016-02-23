@@ -7,6 +7,7 @@
 
 #include "AWSIoTClient.h"
 #include <QDebug>
+#include <errno.h>
 
 extern "C" {
 #include "Log.h"
@@ -26,25 +27,22 @@ static void deliveryComplete(void* context, MQTTClient_deliveryToken dt) {
 
 }
 
-static void traceCallback(enum LOG_LEVELS level, char* message) {
-	fprintf(stderr, "%d: %s\n", level, message);
-}
-
 AWSIoTClient::AWSIoTClient(QObject *parent)
 	: QObject(parent)
 {
-	//Log_setTraceCallback(traceCallback);
-
-    int rc = MQTTClient_create(&client, "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883",
-    		"BeagleBone", MQTTCLIENT_PERSISTENCE_NONE, NULL);
+//    int rc = MQTTClient_create(&client, "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883",
+//    		"BeagleBone", MQTTCLIENT_PERSISTENCE_NONE, NULL);
+	int rc = MQTTClient_create(&client, "ssl://localhost:8883", "BeagleBone", MQTTCLIENT_PERSISTENCE_NONE, NULL);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		fprintf(stderr, "Failed to create client %d\n", rc);
 	}
 
+#if 0
 	rc = MQTTClient_setCallbacks(client, this, connectionLost, messageArrived, deliveryComplete);
 	if (rc != MQTTCLIENT_SUCCESS) {
 		fprintf(stderr, "Failed to set callbacks %d\n", rc);
 	}
+#endif
 
 	MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 	MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
@@ -59,7 +57,7 @@ AWSIoTClient::AWSIoTClient(QObject *parent)
 	fprintf(stderr, "Connecting\n");
 	rc = MQTTClient_connect(client, &conn_opts);
 	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Failed to connect %d\n", rc);
+		fprintf(stderr, "Failed to connect %d\n", errno);
 		exit(1);
 	} else {
 		fprintf(stderr, "Connected\n");
@@ -74,9 +72,6 @@ void AWSIoTClient::subscribe(QString topic) {
 }
 
 void AWSIoTClient::sendMessage(QString topic, QString msg) {
-	const char * cmsg = msg.toLatin1().data();
-	const char * ctopic = topic.toLatin1().data();
-	fprintf(stderr, "Sending '%s' to '%s'\n", cmsg, ctopic);
 	int rc = MQTTClient_publish(client, topic.toLatin1().data(),
 		msg.size() + 1, msg.toLatin1().data(), 0, 0, NULL);
 	if (rc != MQTTCLIENT_SUCCESS) {
