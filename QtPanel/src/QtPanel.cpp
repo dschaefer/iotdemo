@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     AWSIoTClient iotClient;
     engine.rootContext()->setContextProperty("iotClient", &iotClient);
 
-    engine.load(QUrl(QStringLiteral("qrc:/src/main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/src/QtPanel.qml")));
 
     return app.exec();
 }

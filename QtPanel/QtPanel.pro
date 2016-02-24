@@ -3,14 +3,16 @@ TEMPLATE = app
 QT += qml quick
 CONFIG += c++11
 
-RESOURCES += main.qrc
+RESOURCES += QtPanel.qrc
 
-SOURCES += src/main.cpp \
+qml.files = src/QtPanel.qml
+
+SOURCES += src/QtPanel.cpp \
+           src/Receiver.cpp \
            src/AWSIoTClient.cpp
-           
-HEADERS += src/AWSIoTClient.h
 
-qml.files = src/main.qml
+HEADERS += src/Receiver.h \
+           src/AWSIoTClient.h
 
 PAHO = ../../../paho.mqtt.c
 

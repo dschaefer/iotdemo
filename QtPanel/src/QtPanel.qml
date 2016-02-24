@@ -7,7 +7,7 @@ Window {
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            iotClient.sendMessage("sdkTest/msgs", "Hi from QML on Paho");
+            Qt.quit();
         }
     }
 
@@ -16,15 +16,11 @@ Window {
         text: qsTr("Hello World")
         anchors.centerIn: parent
     }
-    
-    Connections {
+
+	Connections {
     		target: iotClient
     		onMessage: {
     			text.text = msg;
     		}
-    }
-    
-    Component.onCompleted: {
-    		iotClient.subscribe("sdkTest/text");
     }
 }

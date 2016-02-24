@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>src/main.qml</file>
+        <file>src/QtPanel.qml</file>
     </qresource>
 </RCC>
