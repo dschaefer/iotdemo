@@ -1,10 +1,10 @@
-/*
- * AWSIoTClient.cpp
- *
- *  Created on: Feb 3, 2016
- *      Author: dschaefer
- */
-
+/*******************************************************************************
+ * Copyright (c) 2016 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 #include "AWSIoTClient.h"
 #include <QDebug>
 #include <errno.h>
@@ -13,70 +13,105 @@ extern "C" {
 #include "Log.h"
 }
 
-static void connectionLost(void* context, char* cause) {
-	fprintf(stderr, "Connection lost: %s\n", cause);
+#define ADDRESS "ssl://192.168.42.1:8883"
+
+static void onConnect(void* context, MQTTAsync_successData* response) {
+	emit ((AWSIoTClient *) context)->connected();
 }
 
-static int messageArrived(void *context, char *topicName, int topicLen, MQTTClient_message *m) {
-	AWSIoTClient * iotClient = (AWSIoTClient *) context;
-	iotClient->message(QLatin1String(topicName), QLatin1String((char *) m->payload, m->payloadlen));
-	return 1;
+static void onConnectFailure(void* context, MQTTAsync_failureData* response) {
+	qFatal("Connect failed %s", response->message);
 }
 
-static void deliveryComplete(void* context, MQTTClient_deliveryToken dt) {
+static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsync_message *message) {
+    emit ((AWSIoTClient *) context)->message(topicName, QByteArray((char *) message->payload, message->payloadlen));
 
+    MQTTAsync_freeMessage(&message);
+    MQTTAsync_free(topicName);
+    return 1;
 }
 
-AWSIoTClient::AWSIoTClient(QObject *parent)
+void AWSIoTClient::connect() {
+	MQTTAsync_connectOptions connectOptions = MQTTAsync_connectOptions_initializer;
+	connectOptions.keepAliveInterval = 20;
+	connectOptions.cleansession = 1;
+	connectOptions.onSuccess = onConnect;
+	connectOptions.onFailure = onConnectFailure;
+	connectOptions.context = this;
+	MQTTAsync_SSLOptions sslOptions = MQTTAsync_SSLOptions_initializer;
+	sslOptions.trustStore = "/Users/dschaefer/cloud/iot/root-certificate.pem";
+	sslOptions.keyStore = "/Users/dschaefer/cloud/iot/6f8159c6b8-certificate.pem.crt";
+	sslOptions.privateKey = "/Users/dschaefer/cloud/iot/6f8159c6b8-private.pem.key";
+	connectOptions.ssl = &sslOptions;
+
+	int rc = MQTTAsync_connect(client, &connectOptions);
+	if (rc != MQTTASYNC_SUCCESS) {
+		qFatal("Failed to start connect, return code %d\n", rc);
+	}
+}
+
+static void connectionLost(void *context, char *cause)
+{
+	qWarning("Connection lost %s, reconnecting", cause);
+	((AWSIoTClient *) context)->connect();
+}
+
+AWSIoTClient::AWSIoTClient(QString address, QString id, QObject *parent)
 	: QObject(parent)
 {
-//    int rc = MQTTClient_create(&client, "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883",
-//    		"BeagleBone", MQTTCLIENT_PERSISTENCE_NONE, NULL);
-	int rc = MQTTClient_create(&client, "ssl://localhost:8883", "BeagleBone", MQTTCLIENT_PERSISTENCE_NONE, NULL);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Failed to create client %d\n", rc);
+	int rc = MQTTAsync_create(&client, address.toUtf8(), id.toUtf8(), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+	if (rc != MQTTASYNC_SUCCESS) {
+		qFatal("Failed to create client %d\n", rc);
 	}
 
-#if 0
-	rc = MQTTClient_setCallbacks(client, this, connectionLost, messageArrived, deliveryComplete);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Failed to set callbacks %d\n", rc);
+	rc = MQTTAsync_setCallbacks(client, this, connectionLost, messageArrived, NULL);
+	if (rc != MQTTASYNC_SUCCESS) {
+		qFatal("Failed to set callbacks %d\n", rc);
 	}
-#endif
+}
 
-	MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-	MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
-	conn_opts.keepAliveInterval = 10;
-	conn_opts.reliable = 0;
-	conn_opts.cleansession = 1;
-	conn_opts.ssl = &ssl_opts;
-	ssl_opts.trustStore = "/Users/dschaefer/cloud/iot/root-certificate.pem";
-	ssl_opts.keyStore = "/Users/dschaefer/cloud/iot/6f8159c6b8-certificate.pem.crt";
-	ssl_opts.privateKey = "/Users/dschaefer/cloud/iot/6f8159c6b8-private.pem.key";
+void onSubscribed(void* context, MQTTAsync_successData* response) {
 
-	fprintf(stderr, "Connecting\n");
-	rc = MQTTClient_connect(client, &conn_opts);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Failed to connect %d\n", errno);
-		exit(1);
-	} else {
-		fprintf(stderr, "Connected\n");
-	}
+}
+
+void onSubscribeFailure(void* context, MQTTAsync_failureData* response) {
+	qFatal("Subscribe failed %s", response->message);
 }
 
 void AWSIoTClient::subscribe(QString topic) {
-	int rc = MQTTClient_subscribe(client, topic.toLatin1().data(), 0);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Failed to subscribe %d\n", rc);
+	MQTTAsync_responseOptions options = MQTTAsync_responseOptions_initializer;
+	options.onSuccess = onSubscribed;
+	options.onFailure = onSubscribeFailure;
+	options.context = this;
+
+	int rc = MQTTAsync_subscribe(client, topic.toUtf8(), 0, &options);
+	if (rc != MQTTASYNC_SUCCESS) {
+		qFatal("Failed so subscribe to topic %d", rc);
 	}
 }
 
-void AWSIoTClient::sendMessage(QString topic, QString msg) {
-	int rc = MQTTClient_publish(client, topic.toLatin1().data(),
-		msg.size() + 1, msg.toLatin1().data(), 0, 0, NULL);
-	if (rc != MQTTCLIENT_SUCCESS) {
-		fprintf(stderr, "Send failed %d\n", rc);
-	} else {
-		fprintf(stderr, "Sent\n");
+void onSent(void* context, MQTTAsync_successData* response) {
+
+}
+
+void onSendFailure(void* context, MQTTAsync_failureData* response) {
+	qFatal("Send failed %s", response->message);
+}
+
+void AWSIoTClient::publish(QString topic, QByteArray msg) {
+	MQTTAsync_responseOptions options = MQTTAsync_responseOptions_initializer;
+	options.onSuccess = onSent;
+	options.onFailure = onSendFailure;
+	options.context = this;
+
+	MQTTAsync_message message = MQTTAsync_message_initializer;
+	message.payload = msg.data();
+	message.payloadlen = msg.size();
+	message.qos = 0;
+	message.retained = 0;
+
+	int rc = MQTTAsync_sendMessage(client, topic.toUtf8(), &message, &options);
+	if (rc != MQTTASYNC_SUCCESS) {
+		qFatal("Failed to start sendMessage, return code %d\n", rc);
 	}
 }

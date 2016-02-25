@@ -5,29 +5,10 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
-import QtQuick 2.3
-import QtQuick.Window 2.2
+#include <src/Manager.h>
 
-Window {
-    visible: true
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            Qt.quit();
-        }
-    }
-
-    Text {
-    		id: text
-        text: qsTr("Hello World")
-        anchors.centerIn: parent
-    }
-
-	Connections {
-    		target: manager
-    		onMessage: {
-    			text.text = msg;
-    		}
-    }
+Manager::Manager(QObject * parent)
+: QObject(parent), iotClient("ssl://192.168.42.1:8883", "BeagleBone", this), sensorReceiver(this)
+{
+	iotClient.connect();
 }
