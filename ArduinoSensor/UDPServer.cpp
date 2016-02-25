@@ -9,29 +9,28 @@
 #include <utility/socket.h>
 #include <utility/cc3000_common.h>
 
-UDPServer::UDPServer(uint16_t _port)
-: port(_port), s(-1)
-{
+UDPServer::UDPServer(uint16_t _port) :
+		port(_port), s(-1) {
 }
 
 bool UDPServer::begin() {
-	if (s == -1) {
-		int soc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-		if (soc < 0) {
-			return false;
-		}
+	if (s >= 0) {
+		closesocket(s);
+	}
 
-		sockaddr_in address;
-		memset(&address, 0, sizeof(address));
-		address.sin_family = AF_INET;
-		address.sin_port = htons(port);
-		address.sin_addr.s_addr = 0;
+	s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s < 0) {
+		return false;
+	}
 
-		if (bind(soc, (sockaddr*) &address, sizeof(address)) < 0) {
-			return false;
-		}
+	sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
+	address.sin_addr.s_addr = 0;
 
-		s = soc;
+	if (bind(s, (sockaddr*) &address, sizeof(address)) < 0) {
+		return false;
 	}
 
 	return true;
