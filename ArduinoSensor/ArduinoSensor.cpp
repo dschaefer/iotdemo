@@ -9,6 +9,7 @@
 #include <Adafruit_CC3000.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
+#include "UDPServer.h"
 
 #define WLAN_SSID	"dasWifi"
 #define WLAN_PASS	"eclipseide"
@@ -25,13 +26,16 @@
 
 #define UDP_PORT 8080
 
-Adafruit_CC3000 cc3000 = Adafruit_CC3000(PIN_CC3000_CS, PIN_CC3000_IRQ, PIN_CC3000_VBAT);
+Adafruit_CC3000 cc3000 = Adafruit_CC3000(PIN_CC3000_CS, PIN_CC3000_IRQ,
+		PIN_CC3000_VBAT);
 Adafruit_CC3000_Client client;
-uint32_t beagleboneIP;
+UDPServer server = UDPServer(8081);
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXEL, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXEL, PIN_NEOPIXEL,
+		NEO_GRB + NEO_KHZ800);
 
-static void setPixels(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 0xff) {
+static void setPixels(uint8_t r, uint8_t g, uint8_t b,
+		uint8_t brightness = 0xff) {
 	pixels.begin();
 	for (int i = 0; i < NUM_NEOPIXEL; ++i) {
 		pixels.setPixelColor(i, r, g, b);
@@ -56,7 +60,8 @@ void setup() {
 	Serial.print(F("Initializing the CC3000 ... "));
 	if (!cc3000.begin()) {
 		Serial.println(F("failed"));
-		while (1);
+		while (1)
+			;
 	}
 	Serial.println(F("passed"));
 
@@ -87,7 +92,7 @@ void setup() {
 	Serial.print(F(WLAN_SSID));
 	Serial.print(F(" ... "));
 
-	uint32_t ipAddress = cc3000.IP2U32(192, 168, 42, 2);
+	uint32_t ipAddress = cc3000.IP2U32(192, 168, 42, 17);
 	uint32_t netMask = cc3000.IP2U32(255, 255, 255, 0);
 	uint32_t defaultGateway = cc3000.IP2U32(192, 168, 42, 1);
 	uint32_t dns = cc3000.IP2U32(8, 8, 4, 4);
@@ -107,11 +112,8 @@ void setup() {
 	}
 	Serial.println(F("connected"));
 
-	beagleboneIP = cc3000.IP2U32(192, 168, 42, 3);
-	client = cc3000.connectUDP(beagleboneIP, UDP_PORT);
-	if (!client.connected()) {
-		Serial.println(F("Connecting to BeagleBone failed"));
-		failMode();
+	if (!server.begin()) {
+		Serial.println(F("Failed to start UDP server."));
 	}
 
 	Serial.println(F("Initialization complete."));
@@ -121,32 +123,50 @@ void setup() {
 
 static int state = -1;
 
+void setState(int newState) {
+	state = newState;
+
+	if (state) {
+		setPixels(0xff, 0xff, 0, 0x40);
+	} else {
+		setPixels(0, 0xff, 0, 0x40);
+	}
+
+	StaticJsonBuffer<16> jsonBuffer;
+	JsonObject &json = jsonBuffer.createObject();
+	json["state"] = state;
+
+	char buffer[16];
+	size_t n = json.printTo(buffer, sizeof(buffer));
+
+	Adafruit_CC3000_Client client = cc3000.connectUDP(
+			cc3000.IP2U32(192, 168, 42, 2), UDP_PORT);
+	if (!client.connected()) {
+		Serial.println(F("Connecting to BeagleBone failed"));
+		failMode();
+	}
+
+	client.write(buffer, n);
+	client.close();
+}
+
+static int override = 0;
+
 void loop() {
-	int newState = digitalRead(PIN_SENSOR);
-	if (newState != state) {
-		if (newState) {
-			setPixels(0xff, 0xff, 0, 0x40);
-		} else {
-			setPixels(0, 0xff, 0, 0x40);
-		}
-		state = newState;
-
+	if (server.available()) {
+		char buffer[32];
+		int n = server.read(buffer, sizeof(buffer));
+		buffer[n] = 0;
 		StaticJsonBuffer<16> jsonBuffer;
-		JsonObject &json = jsonBuffer.createObject();
-		json["state"] = state;
-
-		char buffer[16];
-		size_t n = json.printTo(buffer, sizeof(buffer));
-
-		if (!client.connected()) {
-			Serial.println(F("Reconnecting"));
-			client.connect(beagleboneIP, UDP_PORT);
+		JsonObject &json = jsonBuffer.parseObject(buffer);
+		int newState = json["state"];
+		setState(newState);
+		override = newState != 0;
+	} else if (!override) {
+		int newState = digitalRead(PIN_SENSOR);
+		if (newState != state) {
+			setState(newState);
 		}
-
-		Serial.print(F("Sending "));
-		client.write(buffer, n + 1);
-		client.flush();
-		Serial.println(buffer);
 	}
 
 	delay(200);

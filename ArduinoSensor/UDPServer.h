@@ -5,29 +5,22 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
-import QtQuick 2.3
-import QtQuick.Window 2.2
+#ifndef UDPSERVER_H_
+#define UDPSERVER_H_
 
-Window {
-    visible: true
+#include <Arduino.h>
 
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            Qt.quit();
-        }
-    }
+class UDPServer {
+public:
+	UDPServer(uint16_t port);
 
-    Text {
-    		id: text
-        text: qsTr("Hello World")
-        anchors.centerIn: parent
-    }
+	bool begin();
+	bool available();
+	int read(char *buffer, int size);
 
-	Connections {
-    		target: manager
-    		onMessage: {
-    			text.text = msg;
-    		}
-    }
-}
+private:
+	uint16_t port;
+	int s;
+};
+
+#endif /* UDPSERVER_H_ */

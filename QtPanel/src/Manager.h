@@ -14,8 +14,17 @@
 
 class Manager : public QObject {
 	Q_OBJECT
+
 public:
 	Manager(QObject * parent = NULL);
+
+	Q_INVOKABLE void setState(int sensor, int state);
+
+signals:
+	void stateChanged(int sensor, int state);
+
+private slots:
+	void onMessage(QHostAddress from, QByteArray msg);
 
 private:
 	AWSIoTClient iotClient;

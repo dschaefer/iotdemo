@@ -9,23 +9,27 @@
 #define RECEIVER_H_
 
 #include <QObject>
+#include <QUdpSocket>
+#include <QHostAddress>
 
 class QUdpSocket;
 
 class Receiver : public QObject {
 	Q_OBJECT
+
 public:
-	Receiver(QObject * parent = NULL);
-	virtual ~Receiver();
+	Receiver(QHostAddress address, quint16 port, QObject * parent = NULL);
+
+	void sendMessage(QHostAddress host, quint16 port, QByteArray msg);
 
 signals:
-	void message(QByteArray msg);
+	void message(QHostAddress from, QByteArray msg);
 
 private slots:
 	void processMessages();
 
 private:
-	QUdpSocket * socket;
+	QUdpSocket socket;
 };
 
 #endif /* RECEIVER_H_ */

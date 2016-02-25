@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
-        <file>src/QtPanel.qml</file>
+        <file>qml/QtPanel.qml</file>
+        <file>qml/SensorButton.qml</file>
     </qresource>
 </RCC>

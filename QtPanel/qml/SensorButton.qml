@@ -5,22 +5,30 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
-#include <QGuiApplication>
-#include <QQmlApplicationEngine>
-#include <QQmlContext>
+import QtQuick 2.0
 
-#include "Manager.h"
+Item {
+	id: container
+	property int sensor
+	property alias color: rectangle.color
 
-int main(int argc, char *argv[])
-{
-    QGuiApplication app(argc, argv);
+	width: 100
+	height: 100
+	
+	Rectangle {
+		id: rectangle
+		anchors.fill: parent
 
-    QQmlApplicationEngine engine;
+	    Text {
+	    		id: text
+	        text: sensor
+	        anchors.centerIn: parent
+        }
+    }
 
-    Manager manager;
-    engine.rootContext()->setContextProperty("manager", &manager);
-
-    engine.load(QUrl(QStringLiteral("qrc:/qml/QtPanel.qml")));
-
-    return app.exec();
+	MouseArea {
+		anchors.fill: parent
+		onPressed: manager.setState(sensor, 1);
+		onReleased: manager.setState(sensor, 0);
+	}
 }

@@ -5,7 +5,7 @@ CONFIG += c++11
 
 RESOURCES += QtPanel.qrc
 
-qml.files = src/QtPanel.qml
+qml.files = qml/QtPanel.qml
 
 SOURCES += src/QtPanel.cpp \
            src/Receiver.cpp \
