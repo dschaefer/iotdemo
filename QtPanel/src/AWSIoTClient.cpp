@@ -13,14 +13,13 @@ extern "C" {
 #include "Log.h"
 }
 
-#define ADDRESS "ssl://192.168.42.1:8883"
-
 static void onConnect(void* context, MQTTAsync_successData* response) {
+	qDebug("Connected");
 	emit ((AWSIoTClient *) context)->connected();
 }
 
 static void onConnectFailure(void* context, MQTTAsync_failureData* response) {
-	qFatal("Connect failed %s", response->message);
+	qFatal("Connect failed %s", response != NULL ? response->message : "<no message>");
 }
 
 static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsync_message *message) {
@@ -33,15 +32,16 @@ static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsyn
 
 void AWSIoTClient::connect() {
 	MQTTAsync_connectOptions connectOptions = MQTTAsync_connectOptions_initializer;
-	connectOptions.keepAliveInterval = 20;
+	connectOptions.keepAliveInterval = 60;
 	connectOptions.cleansession = 1;
 	connectOptions.onSuccess = onConnect;
 	connectOptions.onFailure = onConnectFailure;
 	connectOptions.context = this;
 	MQTTAsync_SSLOptions sslOptions = MQTTAsync_SSLOptions_initializer;
-	sslOptions.trustStore = "/Users/dschaefer/cloud/iot/root-certificate.pem";
-	sslOptions.keyStore = "/Users/dschaefer/cloud/iot/6f8159c6b8-certificate.pem.crt";
-	sslOptions.privateKey = "/Users/dschaefer/cloud/iot/6f8159c6b8-private.pem.key";
+	sslOptions.trustStore = "/fs/sd0/keys/root-certificate.pem";
+	sslOptions.keyStore = "/fs/sd0/keys/6f8159c6b8-certificate.pem.crt";
+	sslOptions.privateKey = "/fs/sd0/keys/6f8159c6b8-private.pem.key";
+	sslOptions.enableServerCertAuth = 0;
 	connectOptions.ssl = &sslOptions;
 
 	int rc = MQTTAsync_connect(client, &connectOptions);
@@ -75,7 +75,7 @@ void onSubscribed(void* context, MQTTAsync_successData* response) {
 }
 
 void onSubscribeFailure(void* context, MQTTAsync_failureData* response) {
-	qFatal("Subscribe failed %s", response->message);
+	qFatal("Subscribe failed %s", response != NULL ? response->message : "<no message>");
 }
 
 void AWSIoTClient::subscribe(QString topic) {
@@ -91,7 +91,7 @@ void AWSIoTClient::subscribe(QString topic) {
 }
 
 void onSent(void* context, MQTTAsync_successData* response) {
-
+	qDebug("Sent");
 }
 
 void onSendFailure(void* context, MQTTAsync_failureData* response) {

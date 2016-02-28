@@ -11,21 +11,40 @@
 
 static QHostAddress sensor17("192.168.42.17");
 
+#define init17 "/factory/sensor17/init"
+#define status17 "/factory/sensor17/status"
+
 Manager::Manager(QObject * parent)
-: QObject(parent), iotClient("ssl://192.168.42.1:8883", "BeagleBone", this), sensorReceiver(QHostAddress("192.168.42.2"), 8080, this)
+: QObject(parent), iotClient("ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883", "BeagleBone", this), sensorReceiver(QHostAddress("192.168.42.2"), 8080, this)
 {
-	//iotClient.connect();
+	iotClient.connect();
 
 	connect(&sensorReceiver, SIGNAL(message(QHostAddress, QByteArray)), this, SLOT(onMessage(QHostAddress, QByteArray)));
 }
 
 void Manager::onMessage(QHostAddress from, QByteArray msg) {
 	if (from == sensor17) {
+		qDebug("Received %s", QString(msg).toUtf8().data());
 		QJsonParseError error;
 		QJsonDocument jsonDoc = QJsonDocument::fromJson(msg, &error);
 		QJsonObject json = jsonDoc.object();
 		int state = json["state"].toInt(-1);
-		emit stateChanged(17, state);
+		if (state >= 0) {
+			emit stateChanged(17, state);
+			int time = json["time"].toInt(-1);
+			QJsonObject status;
+			status["state"] = state;
+			if (time > 0) {
+				status["time"] = time;
+			}
+			iotClient.publish(status17, QJsonDocument(status).toJson());
+		}
+
+		if (json["init"].toBool(false)) {
+			QJsonObject init;
+			init["init"] = true;
+			iotClient.publish(init17, QJsonDocument(init).toJson());
+		}
 	}
 }
 
@@ -33,7 +52,6 @@ void Manager::setState(int sensor, int state) {
 	if (sensor == 17) {
 		QJsonObject json;
 		json["state"] = state;
-		QJsonDocument jsonDoc = QJsonDocument(json);
-		sensorReceiver.sendMessage(sensor17, 8081, jsonDoc.toJson());
+		sensorReceiver.sendMessage(sensor17, 8081, QJsonDocument(json).toJson());
 	}
 }

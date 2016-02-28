@@ -9,7 +9,7 @@
 #include <Adafruit_CC3000.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
-#include "UDPServer.h"
+#include <utility/socket.h>
 
 #define WLAN_SSID	"dasWifi"
 #define WLAN_PASS	"eclipseide"
@@ -24,12 +24,12 @@
 
 #define NUM_NEOPIXEL		4
 
-#define UDP_PORT 8080
+#define SEND_PORT 8080
+#define RECV_PORT 8081
 
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(PIN_CC3000_CS, PIN_CC3000_IRQ,
 		PIN_CC3000_VBAT);
-Adafruit_CC3000_Client client;
-UDPServer server = UDPServer(8081);
+Adafruit_CC3000_Client server;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXEL, PIN_NEOPIXEL,
 		NEO_GRB + NEO_KHZ800);
@@ -50,6 +50,27 @@ static void failMode() {
 		delay(1000);
 		setPixels(0, 0, 0);
 	}
+}
+
+Adafruit_CC3000_Client initServer() {
+	int32_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s < 0) {
+		Serial.println(F("Failed to allocate server socket"));
+		failMode();
+	}
+
+	sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	address.sin_port = htons(RECV_PORT);
+	address.sin_addr.s_addr = 0;
+
+	if (bind(s, (sockaddr*) &address, sizeof(address)) < 0) {
+		Serial.println(F("Failed to bind server socket"));
+		failMode();
+	}
+
+	return Adafruit_CC3000_Client(s);
 }
 
 void setup() {
@@ -112,56 +133,88 @@ void setup() {
 	}
 	Serial.println(F("connected"));
 
-	if (!server.begin()) {
-		Serial.println(F("Failed to start UDP server."));
-	}
+	server = initServer();
 
 	Serial.println(F("Initialization complete."));
 
 	pinMode(PIN_SENSOR, INPUT);
 }
 
+void sendMessage(JsonObject & msg) {
+	char buffer[64];
+	size_t n = msg.printTo(buffer, sizeof(buffer));
+	buffer[n] = 0;
+
+	Adafruit_CC3000_Client client = cc3000.connectUDP(cc3000.IP2U32(192, 168, 42, 2), SEND_PORT);
+	client.write(buffer, n);
+	client.close();
+
+	Serial.print("Sent ");
+	Serial.println(buffer);
+}
+
 static int state = -1;
+static long lastTime = 0;
+static int needInit = 1;
 
 void setState(int newState) {
-	state = newState;
-
-	if (state) {
+	if (newState) {
 		setPixels(0xff, 0xff, 0, 0x40);
 	} else {
 		setPixels(0, 0xff, 0, 0x40);
 	}
 
-	StaticJsonBuffer<16> jsonBuffer;
+	StaticJsonBuffer<64> jsonBuffer;
 	JsonObject &json = jsonBuffer.createObject();
-	json["state"] = state;
+	json["state"] = newState;
 
-	char buffer[16];
-	size_t n = json.printTo(buffer, sizeof(buffer));
-
-	Adafruit_CC3000_Client client = cc3000.connectUDP(
-			cc3000.IP2U32(192, 168, 42, 2), UDP_PORT);
-	if (!client.connected()) {
-		Serial.println(F("Connecting to BeagleBone failed"));
-		failMode();
+	if (needInit) {
+		json["init"] = true;
 	}
 
-	client.write(buffer, n);
-	client.close();
+	if (newState == 1) {
+		long thisTime = millis();
+		if (lastTime > 0) {
+			json["time"] = thisTime - lastTime;
+		}
+		lastTime = thisTime;
+	}
+
+	sendMessage(json);
+
+	state = newState;
 }
 
+static int sequence = 0;
 static int override = 0;
+static long onTime;
 
 void loop() {
-	if (server.available()) {
+	if (++sequence > 25) {
+		server.close();
+		server = initServer();
+		if (false && needInit) {
+			StaticJsonBuffer<32> jsonBuffer;
+			JsonObject &json = jsonBuffer.createObject();
+			json["init"] = true;
+			sendMessage(json);
+		}
+		sequence = 0;
+	} else if (server.available()) {
 		char buffer[32];
 		int n = server.read(buffer, sizeof(buffer));
 		buffer[n] = 0;
 		StaticJsonBuffer<16> jsonBuffer;
 		JsonObject &json = jsonBuffer.parseObject(buffer);
 		int newState = json["state"];
-		setState(newState);
-		override = newState != 0;
+		if (newState == 1) {
+			setState(newState);
+			override = 1;
+			onTime = millis();
+		}
+	} else if (override && millis() - onTime > 4000) {
+		setState(0);
+		override = 0;
 	} else if (!override) {
 		int newState = digitalRead(PIN_SENSOR);
 		if (newState != state) {
