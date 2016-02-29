@@ -24,7 +24,8 @@ signals:
 	void stateChanged(int sensor, int state);
 
 private slots:
-	void onMessage(QHostAddress from, QByteArray msg);
+	void onSensorMessage(QHostAddress from, QByteArray msg);
+	void onServerMessage(QString topic, QByteArray msg);
 
 private:
 	AWSIoTClient iotClient;

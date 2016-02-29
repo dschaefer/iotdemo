@@ -193,7 +193,7 @@ void loop() {
 	if (++sequence > 25) {
 		server.close();
 		server = initServer();
-		if (false && needInit) {
+		if (needInit) {
 			StaticJsonBuffer<32> jsonBuffer;
 			JsonObject &json = jsonBuffer.createObject();
 			json["init"] = true;

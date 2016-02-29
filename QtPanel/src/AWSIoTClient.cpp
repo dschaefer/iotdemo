@@ -91,7 +91,6 @@ void AWSIoTClient::subscribe(QString topic) {
 }
 
 void onSent(void* context, MQTTAsync_successData* response) {
-	qDebug("Sent");
 }
 
 void onSendFailure(void* context, MQTTAsync_failureData* response) {
