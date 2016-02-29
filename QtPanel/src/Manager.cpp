@@ -12,15 +12,23 @@
 static QHostAddress sensor17("192.168.42.17");
 #define SENSOR_PORT 8081
 
+#define MQTT_URL "ssl://127.0.0.1:8883"
+//#define MQTT_URL "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883"
+
 Manager::Manager(QObject * parent) :
-		QObject(parent), iotClient("ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883",
-				"BeagleBone", this), sensorReceiver(QHostAddress("192.168.42.2"), 8080, this) {
+		QObject(parent), connected(false), iotClient(MQTT_URL, "BeagleBone", this), sensorReceiver(
+				QHostAddress("192.168.42.2"), 8080, this) {
 	connect(&sensorReceiver, SIGNAL(message(QHostAddress, QByteArray)), this,
 			SLOT(onSensorMessage(QHostAddress, QByteArray)));
+	connect(&iotClient, SIGNAL(connected()), this, SLOT(onServerConnected()));
 	connect(&iotClient, SIGNAL(message(QString, QByteArray)), this,
 			SLOT(onServerMessage(QString, QByteArray)));
 
 	iotClient.connect();
+}
+
+void Manager::onServerConnected() {
+	connected = true;
 	iotClient.subscribe("/factory/in");
 }
 
@@ -47,7 +55,9 @@ void Manager::onSensorMessage(QHostAddress from, QByteArray msg) {
 			upreport["init"] = true;
 		}
 
-		iotClient.publish("/factory/out", QJsonDocument(upreport).toJson());
+		if (connected) {
+			iotClient.publish("/factory/out", QJsonDocument(upreport).toJson());
+		}
 	}
 }
 

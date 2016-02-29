@@ -28,14 +28,12 @@
 #define RECV_PORT 8081
 
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(PIN_CC3000_CS, PIN_CC3000_IRQ,
-		PIN_CC3000_VBAT);
+PIN_CC3000_VBAT);
 Adafruit_CC3000_Client server;
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXEL, PIN_NEOPIXEL,
-		NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXEL, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-static void setPixels(uint8_t r, uint8_t g, uint8_t b,
-		uint8_t brightness = 0xff) {
+static void setPixels(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 0xff) {
 	pixels.begin();
 	for (int i = 0; i < NUM_NEOPIXEL; ++i) {
 		pixels.setPixelColor(i, r, g, b);
@@ -155,7 +153,7 @@ void sendMessage(JsonObject & msg) {
 
 static int state = -1;
 static long lastTime = 0;
-static int needInit = 1;
+static bool needInit = true;
 
 void setState(int newState) {
 	if (newState) {
@@ -164,18 +162,18 @@ void setState(int newState) {
 		setPixels(0, 0xff, 0, 0x40);
 	}
 
-	StaticJsonBuffer<64> jsonBuffer;
+	StaticJsonBuffer < 64 > jsonBuffer;
 	JsonObject &json = jsonBuffer.createObject();
-	json["state"] = newState;
+	json[F("state")] = newState;
 
 	if (needInit) {
-		json["init"] = true;
+		json[F("init")] = true;
 	}
 
 	if (newState == 1) {
 		long thisTime = millis();
 		if (lastTime > 0) {
-			json["time"] = thisTime - lastTime;
+			json[F("time")] = thisTime - lastTime;
 		}
 		lastTime = thisTime;
 	}
@@ -188,15 +186,16 @@ void setState(int newState) {
 static int sequence = 0;
 static int override = 0;
 static long onTime;
+static long threshold = 0;
 
 void loop() {
 	if (++sequence > 25) {
 		server.close();
 		server = initServer();
 		if (needInit) {
-			StaticJsonBuffer<32> jsonBuffer;
+			StaticJsonBuffer < 32 > jsonBuffer;
 			JsonObject &json = jsonBuffer.createObject();
-			json["init"] = true;
+			json[F("init")] = true;
 			sendMessage(json);
 		}
 		sequence = 0;
@@ -204,13 +203,29 @@ void loop() {
 		char buffer[32];
 		int n = server.read(buffer, sizeof(buffer));
 		buffer[n] = 0;
-		StaticJsonBuffer<16> jsonBuffer;
+
+		StaticJsonBuffer < 32 > jsonBuffer;
 		JsonObject &json = jsonBuffer.parseObject(buffer);
-		int newState = json["state"];
-		if (newState == 1) {
-			setState(newState);
-			override = 1;
-			onTime = millis();
+		Serial.print(F("Received "));
+		json.printTo(Serial);
+		Serial.println();
+
+		JsonObjectKey stateKey("state");
+		if (json.containsKey(stateKey)) {
+			int newState = json[stateKey];
+			if (newState == 1) {
+				setState(newState);
+				override = 1;
+				onTime = millis();
+			}
+		}
+
+		if (needInit) {
+			JsonObjectKey threshKey("thresh");
+			if (json.containsKey(threshKey)) {
+				threshold = json[threshKey];
+				needInit = false;
+			}
 		}
 	} else if (override && millis() - onTime > 4000) {
 		setState(0);

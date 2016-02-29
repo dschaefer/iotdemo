@@ -12,22 +12,25 @@
 #include "AWSIoTClient.h"
 #include "Receiver.h"
 
-class Manager : public QObject {
+class Manager: public QObject {
 	Q_OBJECT
 
 public:
 	Manager(QObject * parent = NULL);
 
-	Q_INVOKABLE void setState(int sensor, int state);
+	Q_INVOKABLE
+	void setState(int sensor, int state);
 
-signals:
+	signals:
 	void stateChanged(int sensor, int state);
 
 private slots:
 	void onSensorMessage(QHostAddress from, QByteArray msg);
+	void onServerConnected();
 	void onServerMessage(QString topic, QByteArray msg);
 
 private:
+	bool connected;
 	AWSIoTClient iotClient;
 	Receiver sensorReceiver;
 };

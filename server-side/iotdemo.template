@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
   "Resources" : {
-    "IoTDemoRole" : {
+    "LambdaRole" : {
       "Type" : "AWS::IAM::Role",
       "Properties" : {
         "AssumeRolePolicyDocument" : {
@@ -17,13 +17,13 @@
         "Path" : "/"
       }
     },
-    "IoTDemoPolicy" : {
+    "LambdaPolicy" : {
       "Type" : "AWS::IAM::Policy",
-      "DependsOn" : [ "IoTDemoRole" ],
+      "DependsOn" : [ "LambdaRole" ],
       "Properties" : {
-        "PolicyName" : "IoTDemoPolicy",
+        "PolicyName" : "LambdaPolicy",
         "Roles" : [ {
-          "Ref" : "IoTDemoRole"
+          "Ref" : "LambdaRole"
         } ],
         "PolicyDocument" : {
           "Version" : "2012-10-17",
@@ -35,16 +35,16 @@
         }
       }
     },
-    "IoTDemoLambda" : {
+    "SensorLambda" : {
       "Type" : "AWS::Lambda::Function",
-      "DependsOn" : [ "IoTDemoRole", "IoTDemoPolicy" ],
+      "DependsOn" : [ "LambdaRole", "LambdaPolicy" ],
       "Properties" : {
         "Code" : {
           "S3Bucket" : "qnx-dschaefer-iotdemo",
-          "S3Key" : "sensor-lambda-0.0.2-SNAPSHOT.jar"
+          "S3Key" : "sensor-lambda-0.0.6-SNAPSHOT.jar"
         },
         "Role" : {
-          "Fn::GetAtt" : [ "IoTDemoRole", "Arn" ]
+          "Fn::GetAtt" : [ "LambdaRole", "Arn" ]
         },
         "Runtime" : "java8",
         "Handler" : "doug.iotdemo.lambda.sensor.SensorLambda",
