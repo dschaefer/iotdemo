@@ -12,6 +12,9 @@
 		<module>analyzer</module>
 		<module>common</module>
 	</modules>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 	<build>
 		<pluginManagement>
 			<plugins>
@@ -22,10 +25,6 @@
 					<configuration>
 						<source>1.8</source>
 						<target>1.8</target>
-						<compilerArgs>
-							<arg>-Werror</arg>
-							<arg>-Xlint:all</arg>
-						</compilerArgs>
 					</configuration>
 				</plugin>
 				<plugin>

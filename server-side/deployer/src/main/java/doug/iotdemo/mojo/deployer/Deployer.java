@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2016 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package doug.iotdemo.mojo.deployer;
 
 import java.io.File;
@@ -25,6 +32,7 @@ public class Deployer extends AbstractMojo {
 	@Parameter(property = "deployer.bucketKey", required = true)
 	private String bucketKey;
 
+	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		AmazonS3 s3 = new AmazonS3Client();
 

@@ -101,7 +101,7 @@
       "Properties" : {
         "Code" : {
           "S3Bucket" : "qnx-dschaefer-iotdemo",
-          "S3Key" : "sensor-lambda-0.0.12-SNAPSHOT.jar"
+          "S3Key" : "sensor-lambda-0.0.13-SNAPSHOT.jar"
         },
         "Role" : {
           "Fn::GetAtt" : [ "LambdaRole", "Arn" ]
@@ -116,7 +116,7 @@
   "Outputs" : {
     "TimeQueueName" : {
       "Value" : {
-        "Ref" : "TimeChangeQueue"
+        "Ref" : "TimeQueue"
       }
     },
     "SensorTableName" : {

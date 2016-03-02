@@ -1,4 +1,11 @@
-package analyzer;
+/*******************************************************************************
+ * Copyright (c) 2016 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
+package doug.iotdemo.analyzer;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -8,10 +15,12 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.model.AttributeAction;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.Message;
@@ -36,7 +45,7 @@ public class Analyzer {
 		}
 	}
 
-	public Analyzer() throws MqttException {
+	public Analyzer() throws MqttException, IOException {
 		mqtt = new MQTTUtils();
 	}
 
@@ -90,10 +99,17 @@ public class Analyzer {
 	void saveSensor(String sensor) throws IOException, MqttException {
 		SensorData sensorData = data.get(sensor);
 		if (sensorData != null) {
-			PutItemRequest request = new PutItemRequest().addItemEntry("sensor", new AttributeValue().withS(sensor))
-					.addItemEntry("time", new AttributeValue().withN(Long.toString(sensorData.time)))
-					.addItemEntry("count", new AttributeValue().withN(Long.toString(sensorData.count)));
-			db.putItem(request);
+			UpdateItemRequest request = new UpdateItemRequest()
+					.addKeyEntry("sensor", new AttributeValue().withS(sensor))
+					.addAttributeUpdatesEntry("time",
+							new AttributeValueUpdate()
+									.withValue(new AttributeValue().withN(Long.toString(sensorData.time)))
+									.withAction(AttributeAction.PUT))
+					.addAttributeUpdatesEntry("count",
+							new AttributeValueUpdate()
+									.withValue(new AttributeValue().withN(Long.toString(sensorData.count)))
+									.withAction(AttributeAction.PUT));
+			db.updateItem(request);
 
 			long thresh = sensorData.time / sensorData.count;
 			mqtt.sendThreshold(sensor, thresh);
