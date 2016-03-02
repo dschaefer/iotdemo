@@ -1,6 +1,54 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
   "Resources" : {
+    "TimeQueue" : {
+      "Type" : "AWS::SQS::Queue",
+      "Properties" : {
+        "DelaySeconds" : 0,
+        "ReceiveMessageWaitTimeSeconds" : 20,
+        "VisibilityTimeout" : 30
+      }
+    },
+    "SensorTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [ {
+          "AttributeName" : "sensor",
+          "AttributeType" : "S"
+        } ],
+        "KeySchema" : [ {
+          "AttributeName" : "sensor",
+          "KeyType" : "HASH"
+        } ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits" : 1,
+          "WriteCapacityUnits" : 1
+        }
+      }
+    },
+    "TimeTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [ {
+          "AttributeName" : "sensor",
+          "AttributeType" : "S"
+        }, {
+          "AttributeName" : "timestamp",
+          "AttributeType" : "N"
+        } ],
+        "KeySchema" : [ {
+          "AttributeName" : "sensor",
+          "KeyType" : "HASH"
+        }, {
+          "AttributeName" : "timestamp",
+          "KeyType" : "RANGE"
+        } ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits" : 1,
+          "WriteCapacityUnits" : 1
+        }
+      }
+    },
     "LambdaRole" : {
       "Type" : "AWS::IAM::Role",
       "Properties" : {
@@ -31,6 +79,18 @@
             "Effect" : "Allow",
             "Action" : [ "logs:*" ],
             "Resource" : [ "arn:aws:logs:*:*:*" ]
+          }, {
+            "Effect" : "Allow",
+            "Action" : [ "cloudformation:DescribeStacks" ],
+            "Resource" : [ "*" ]
+          }, {
+            "Effect" : "Allow",
+            "Action" : [ "sqs:SendMessage" ],
+            "Resource" : [ "*" ]
+          }, {
+            "Effect" : "Allow",
+            "Action" : [ "dynamodb:*" ],
+            "Resource" : [ "*" ]
           } ]
         }
       }
@@ -41,7 +101,7 @@
       "Properties" : {
         "Code" : {
           "S3Bucket" : "qnx-dschaefer-iotdemo",
-          "S3Key" : "sensor-lambda-0.0.6-SNAPSHOT.jar"
+          "S3Key" : "sensor-lambda-0.0.12-SNAPSHOT.jar"
         },
         "Role" : {
           "Fn::GetAtt" : [ "LambdaRole", "Arn" ]
@@ -49,7 +109,24 @@
         "Runtime" : "java8",
         "Handler" : "doug.iotdemo.lambda.sensor.SensorLambda",
         "Timeout" : 60,
-        "MemorySize" : 128
+        "MemorySize" : 192
+      }
+    }
+  },
+  "Outputs" : {
+    "TimeQueueName" : {
+      "Value" : {
+        "Ref" : "TimeChangeQueue"
+      }
+    },
+    "SensorTableName" : {
+      "Value" : {
+        "Ref" : "SensorTable"
+      }
+    },
+    "TimeTableName" : {
+      "Value" : {
+        "Ref" : "TimeTable"
       }
     }
   }

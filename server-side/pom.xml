@@ -9,6 +9,8 @@
 		<module>deployer</module>
 		<module>sensor-lambda</module>
 		<module>web-server</module>
+		<module>analyzer</module>
+		<module>common</module>
 	</modules>
 	<build>
 		<pluginManagement>
