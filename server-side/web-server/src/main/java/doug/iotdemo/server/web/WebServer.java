@@ -23,7 +23,7 @@ public class WebServer {
 
 		router.route().handler(LoggerHandler.create(LoggerFormat.DEFAULT));
 
-		router.route().handler(StaticHandler.create("www"));
+		router.route().handler(StaticHandler.create("www").setCachingEnabled(false));
 
 		vertx.createHttpServer().requestHandler(router::accept).listen(8080);
 		System.out.println("Listening on port 8080");

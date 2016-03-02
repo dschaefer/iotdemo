@@ -4,8 +4,8 @@ import ReactDOM from 'react-dom';
 export class SensorButton extends React.Component {
 	render() {
 		return (
-			<div>
-				<button type="button" className="btn btn-success">Sensor 17</button><br />
+			<div className="col-sm-3">
+				<button type="button" className="btn btn-success sbtn">Sensor {this.props.sensor}</button><br />
 			</div>
 		);
 	}
@@ -13,18 +13,28 @@ export class SensorButton extends React.Component {
 
 export class Sensors extends React.Component {
 	render() {
+		var list = [];
+		for (var i = 1; i < 21; ++i) {
+			list.push(i);
+		}
+
+		var buttons = list.map(function(id) {
+			return <SensorButton key={id} sensor={id} />
+		});
+		
 		return (
 			<div>
-				<p>Sensors:</p>
-				<SensorButton />
-				<SensorButton />
+				<div className="row">
+					{buttons}
+				</div>
 			</div>
 		);
 	}
 }
+
 ReactDOM.render(
 		<div>
-			<h3>Hello from Doug's IoT Demo</h3>
+			<h3>Doug's IoT Demo</h3>
 			<Sensors />
 		</div>,
 		document.getElementById("main")
