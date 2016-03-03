@@ -8,11 +8,7 @@
 package doug.iotdemo.common;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -24,33 +20,23 @@ import com.google.gson.JsonObject;
 
 public class MQTTUtils {
 
-	private MqttClient client;
+	private final MqttClient client;
 
 	public MQTTUtils() throws MqttException, IOException {
-		MqttClient client = new MqttClient("ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883", "LambdaDevice",
-				new MemoryPersistence());
-
-		Path certPath = null;
-		try {
-			certPath = Files.createTempFile("cert", ".jks");
-			InputStream certIn = getClass().getResourceAsStream("/mycert.jks");
-			Files.copy(certIn, certPath, StandardCopyOption.REPLACE_EXISTING);
-			System.setProperty("javax.net.ssl.keyStore", certPath.toString());
-			System.setProperty("javax.net.ssl.keyStorePassword", "password");
-
-			MqttConnectOptions options = new MqttConnectOptions();
-			options.setCleanSession(true);
-			client.connect(options);
-		} finally {
-			if (certPath != null) {
-				Files.deleteIfExists(certPath);
-			}
+		String url = "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883";
+		if (System.getProperty("mqtt.url") != null) {
+			url = System.getProperty("mqtt.url");
 		}
+		client = new MqttClient(url, "LambdaDevice", new MemoryPersistence());
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setCleanSession(true);
+		client.connect(options);
+		System.out.println("Connected to " + url);
 	}
 
-	public void sendThreshold(String sensor, long thresh) throws IOException, MqttException {
-		if (client == null) {
-			return;
+	public void sendThreshold(String sensor, long thresh) throws MqttException {
+		if (!client.isConnected()) {
+			client.connect();
 		}
 
 		JsonObject reply = new JsonObject();
@@ -59,8 +45,6 @@ public class MQTTUtils {
 
 		MqttMessage message = new MqttMessage(reply.toString().getBytes(StandardCharsets.UTF_8));
 		client.publish("/factory/in", message);
-		client.disconnect();
-		System.out.println("Threshold sent");
 	}
 
 }

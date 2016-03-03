@@ -48,7 +48,10 @@ Window {
     				color = "green"
     			} else if (state == 1) {
     				color = "yellow"
+    			} else if (state == 2) {
+    				color = "red"
     			}
+
     			grid.children[sensor - 1].color = color;
     		}
     }

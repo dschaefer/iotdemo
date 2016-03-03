@@ -21,7 +21,7 @@
           "KeyType" : "HASH"
         } ],
         "ProvisionedThroughput" : {
-          "ReadCapacityUnits" : 1,
+          "ReadCapacityUnits" : 5,
           "WriteCapacityUnits" : 1
         }
       }
@@ -101,7 +101,7 @@
       "Properties" : {
         "Code" : {
           "S3Bucket" : "qnx-dschaefer-iotdemo",
-          "S3Key" : "sensor-lambda-0.0.13-SNAPSHOT.jar"
+          "S3Key" : "sensor-lambda-0.0.22-SNAPSHOT.jar"
         },
         "Role" : {
           "Fn::GetAtt" : [ "LambdaRole", "Arn" ]

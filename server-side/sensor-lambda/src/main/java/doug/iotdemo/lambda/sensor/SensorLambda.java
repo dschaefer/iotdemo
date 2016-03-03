@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,6 +46,12 @@ public class SensorLambda implements RequestStreamHandler {
 
 	@Override
 	public void handleRequest(InputStream input, OutputStream output, Context context) throws IOException {
+		Path certPath = Files.createTempFile("cert", ".jks");
+		InputStream certIn = getClass().getResourceAsStream("/lambda.jks");
+		Files.copy(certIn, certPath, StandardCopyOption.REPLACE_EXISTING);
+		System.setProperty("javax.net.ssl.keyStore", certPath.toString());
+		System.setProperty("javax.net.ssl.keyStorePassword", "password");
+
 		JsonObject request = new JsonParser().parse(new InputStreamReader(input)).getAsJsonObject();
 		System.out.println("Request: " + request);
 
@@ -62,6 +71,8 @@ public class SensorLambda implements RequestStreamHandler {
 		if (request.has("time")) {
 			handleTime(request);
 		}
+
+		Files.deleteIfExists(certPath);
 	}
 
 	/*
@@ -76,7 +87,7 @@ public class SensorLambda implements RequestStreamHandler {
 					new AttributeValue().withS(sensor));
 			GetItemResult getResult = db.getItem(getRequest);
 			Map<String, AttributeValue> sensorItem = getResult.getItem();
-			if (sensorItem != null) {
+			if (sensorItem != null && sensorItem.containsKey("time")) {
 				long time = Long.parseLong(sensorItem.get("time").getN());
 				long count = Long.parseLong(sensorItem.get("count").getN());
 				thresh = time / count;

@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
 
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -39,15 +41,18 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 public class WebServer {
 
-	AmazonDynamoDBAsync db = new AmazonDynamoDBAsyncClient();
-	MqttAsyncClient mqtt;
+	private AmazonDynamoDBAsync db = new AmazonDynamoDBAsyncClient();
+	private String sensorTableName = AmazonUtils.getSensorTableName();
+	private MqttAsyncClient mqtt;
 
-	public static void main(String[] args) {
-		try {
-			new WebServer().run();
-		} catch (Throwable e) {
-			e.printStackTrace();
-		}
+	public static void main(String[] args) throws Throwable {
+		Path certPath = Files.createTempFile("cert", ".jks");
+		InputStream certIn = WebServer.class.getResourceAsStream("/server.jks");
+		Files.copy(certIn, certPath, StandardCopyOption.REPLACE_EXISTING);
+		System.setProperty("javax.net.ssl.keyStore", certPath.toString());
+		System.setProperty("javax.net.ssl.keyStorePassword", "password");
+
+		new WebServer().run();
 	}
 
 	private void run() throws MqttException, IOException {
@@ -55,22 +60,10 @@ public class WebServer {
 		// String url = "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883";
 		String url = "ssl://localhost:8883";
 		mqtt = new MqttAsyncClient(url, "LambdaDevice", new MemoryPersistence());
-		Path certPath = null;
-		try {
-			certPath = Files.createTempFile("cert", ".jks");
-			InputStream certIn = getClass().getResourceAsStream("/mycert.jks");
-			Files.copy(certIn, certPath, StandardCopyOption.REPLACE_EXISTING);
-			System.setProperty("javax.net.ssl.keyStore", certPath.toString());
-			System.setProperty("javax.net.ssl.keyStorePassword", "password");
-
-			MqttConnectOptions options = new MqttConnectOptions();
-			options.setCleanSession(true);
-			mqtt.connect(options);
-		} finally {
-			if (certPath != null) {
-				Files.deleteIfExists(certPath);
-			}
-		}
+		MqttConnectOptions options = new MqttConnectOptions();
+		options.setKeepAliveInterval(20);
+		options.setCleanSession(true);
+		mqtt.connect(options);
 
 		// Vertx
 		Vertx vertx = Vertx.factory.vertx();
@@ -89,8 +82,8 @@ public class WebServer {
 	}
 
 	private void handleFetch(RoutingContext context) {
-		ScanRequest scanRequest = new ScanRequest().withTableName(AmazonUtils.getSensorTableName())
-				.withAttributesToGet("sensor", "state");
+		ScanRequest scanRequest = new ScanRequest().withTableName(sensorTableName).withAttributesToGet("sensor",
+				"state");
 		db.scanAsync(scanRequest, new AsyncHandler<ScanRequest, ScanResult>() {
 			@Override
 			public void onSuccess(ScanRequest request, ScanResult result) {
@@ -122,14 +115,45 @@ public class WebServer {
 
 		MqttMessage message = new MqttMessage(msg.toString().getBytes(StandardCharsets.UTF_8));
 		try {
-			mqtt.publish("/factory/in", message);
-			context.response().end();
+			if (!mqtt.isConnected()) {
+				mqtt.connect(this, new IMqttActionListener() {
+					@Override
+					public void onSuccess(IMqttToken arg0) {
+						try {
+							publishMessage(message, context);
+						} catch (MqttException e) {
+							throw new RuntimeException(e);
+						}
+					}
+
+					@Override
+					public void onFailure(IMqttToken arg0, Throwable t) {
+						StringWriter msg = new StringWriter();
+						t.printStackTrace(new PrintWriter(msg));
+						context.response().setStatusCode(500).end(msg.toString());
+					}
+				});
+			} else {
+				publishMessage(message, context);
+			}
 		} catch (MqttException e) {
-			e.printStackTrace();
-			StringWriter emsg = new StringWriter();
-			e.printStackTrace(new PrintWriter(emsg));
-			context.response().setStatusCode(500).end(emsg.toString());
+			throw new RuntimeException(e);
 		}
 	}
 
+	private void publishMessage(MqttMessage message, RoutingContext context) throws MqttException {
+		mqtt.publish("/factory/in", message, this, new IMqttActionListener() {
+			@Override
+			public void onSuccess(IMqttToken arg0) {
+				context.response().end();
+			}
+
+			@Override
+			public void onFailure(IMqttToken arg0, Throwable t) {
+				StringWriter msg = new StringWriter();
+				t.printStackTrace(new PrintWriter(msg));
+				context.response().setStatusCode(500).end(msg.toString());
+			}
+		});
+	}
 }

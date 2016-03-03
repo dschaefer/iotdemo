@@ -156,10 +156,16 @@ static long lastTime = 0;
 static bool needInit = true;
 
 void setState(int newState) {
-	if (newState) {
+	switch (newState) {
+	case 1:
 		setPixels(0xff, 0xff, 0, 0x40);
-	} else {
+		break;
+	case 2:
+		setPixels(0xff, 0, 0, 0x40);
+		break;
+	default:
 		setPixels(0, 0xff, 0, 0x40);
+		break;
 	}
 
 	StaticJsonBuffer < 64 > jsonBuffer;
@@ -233,7 +239,11 @@ void loop() {
 	} else if (!override) {
 		int newState = digitalRead(PIN_SENSOR);
 		if (newState != state) {
-			setState(newState);
+			if (state != 2 || newState == 1) {
+				setState(newState);
+			}
+		} else if (lastTime > 0 && threshold > 0 && state == 0 && millis() - lastTime > threshold) {
+			setState(2);
 		}
 	}
 

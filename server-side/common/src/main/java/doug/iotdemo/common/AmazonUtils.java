@@ -18,6 +18,7 @@ public class AmazonUtils {
 	private static final String stackName = "Doug-IoTDemo";
 	private static String timeQueueName = "TimeQueueName";
 	private static String sensorTableName = "SensorTableName";
+	private static String timeTableName = "TimeTableName";
 
 	public static String getStackOutput(String outputKey) {
 		AmazonCloudFormation cf = new AmazonCloudFormationClient();
@@ -41,7 +42,7 @@ public class AmazonUtils {
 	}
 
 	public static String getTimeTableName() {
-		return getStackOutput(timeQueueName);
+		return getStackOutput(timeTableName);
 	}
 
 }

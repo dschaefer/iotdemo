@@ -8,6 +8,10 @@
 package doug.iotdemo.analyzer;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,20 +50,31 @@ public class Analyzer {
 	}
 
 	public Analyzer() throws MqttException, IOException {
+		Path certPath = Files.createTempFile("cert", ".jks");
+		InputStream certIn = getClass().getResourceAsStream("/analyzer.jks");
+		Files.copy(certIn, certPath, StandardCopyOption.REPLACE_EXISTING);
+		System.setProperty("javax.net.ssl.keyStore", certPath.toString());
+		System.setProperty("javax.net.ssl.keyStorePassword", "password");
+
 		mqtt = new MQTTUtils();
 	}
 
 	void run() throws IOException, MqttException {
+		System.out.println("Doing initial scan");
 		doInitialScan();
+		System.out.println("Done");
 
+		String url = AmazonUtils.getTimeQueueURL();
 		AmazonSQS sqs = new AmazonSQSClient();
 		while (true) {
-			ReceiveMessageResult msgResult = sqs.receiveMessage(AmazonUtils.getTimeQueueURL());
+			ReceiveMessageResult msgResult = sqs.receiveMessage(url);
 			for (Message msg : msgResult.getMessages()) {
 				JsonObject request = new JsonParser().parse(msg.getBody()).getAsJsonObject();
 				String sensor = request.get("sensor").getAsString();
 				long time = request.get("time").getAsLong();
 				addTime(sensor, time);
+				saveSensor(sensor);
+				sqs.deleteMessage(url, msg.getReceiptHandle());
 			}
 		}
 	}
@@ -75,6 +90,7 @@ public class Analyzer {
 				String sensor = item.get("sensor").getS();
 				int time = Integer.valueOf(item.get("time").getN());
 				addTime(sensor, time);
+				saveSensor(sensor);
 			}
 			lastKeyEvaluated = result.getLastEvaluatedKey();
 		} while (lastKeyEvaluated != null);
@@ -99,7 +115,7 @@ public class Analyzer {
 	void saveSensor(String sensor) throws IOException, MqttException {
 		SensorData sensorData = data.get(sensor);
 		if (sensorData != null) {
-			UpdateItemRequest request = new UpdateItemRequest()
+			UpdateItemRequest request = new UpdateItemRequest().withTableName(AmazonUtils.getSensorTableName())
 					.addKeyEntry("sensor", new AttributeValue().withS(sensor))
 					.addAttributeUpdatesEntry("time",
 							new AttributeValueUpdate()

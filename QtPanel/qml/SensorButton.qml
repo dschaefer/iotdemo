@@ -20,7 +20,7 @@ Item {
 		anchors.fill: parent
 
 	    Text {
-	    		id: text
+	    	id: text
 	        text: sensor
 	        anchors.centerIn: parent
         }
