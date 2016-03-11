@@ -90,7 +90,6 @@ public class Analyzer {
 				String sensor = item.get("sensor").getS();
 				int time = Integer.valueOf(item.get("time").getN());
 				addTime(sensor, time);
-				saveSensor(sensor);
 			}
 			lastKeyEvaluated = result.getLastEvaluatedKey();
 		} while (lastKeyEvaluated != null);

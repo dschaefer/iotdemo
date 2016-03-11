@@ -12,8 +12,8 @@
 static QHostAddress sensor17("192.168.42.17");
 #define SENSOR_PORT 8081
 
-#define MQTT_URL "ssl://127.0.0.1:8883"
-//#define MQTT_URL "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883"
+//#define MQTT_URL "ssl://127.0.0.1:8883"
+#define MQTT_URL "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883"
 
 Manager::Manager(QObject * parent) :
 		QObject(parent), connected(false), iotClient(MQTT_URL, "BeagleBone", this), sensorReceiver(

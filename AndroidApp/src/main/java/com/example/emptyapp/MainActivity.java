@@ -23,7 +23,7 @@ import cz.msebera.android.httpclient.Header;
 public class MainActivity extends AppCompatActivity {
 
 	public static final String TAG = "Doug";
-	private static final String URL = "http://10.122.232.191:8080/api/sensors";
+	private static final String URL = "http://192.168.42.5:8080/api/sensors";
 	private static AsyncHttpClient client = new AsyncHttpClient();
 
 	private ListView listView;

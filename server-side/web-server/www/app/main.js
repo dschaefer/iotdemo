@@ -20,17 +20,21 @@ export class SensorButton extends React.Component {
 	
 	render() {
 		var color = "btn btn-success sbtn";
+		var thresh = 20000;
 		if (this.props.data) {
 			if (this.props.data.state == 1) {
 				color = "btn btn-warning sbtn";
 			} else if (this.props.data.state == 2) {
 				color = "btn btn-danger sbtn";
 			}
+			thresh = this.props.data.thresh;
 		}
 		
 		return (
 			<div className="col-sm-3">
-				<button type="button" className={color} onMouseDown={this.onMouseDown.bind(this)} onMouseUp={this.onMouseUp.bind(this)}>Sensor {this.props.sensor}</button>
+				<button type="button" className={color} onMouseDown={this.onMouseDown.bind(this)} onMouseUp={this.onMouseUp.bind(this)}>
+					Sensor {this.props.sensor} ({thresh})
+				</button>
 			</div>
 		);
 	}

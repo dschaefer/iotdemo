@@ -57,8 +57,8 @@ public class WebServer {
 
 	private void run() throws MqttException, IOException {
 		// MQTT
-		// String url = "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883";
-		String url = "ssl://localhost:8883";
+		String url = "ssl://A2KECYFFLC558H.iot.us-east-1.amazonaws.com:8883";
+		// String url = "ssl://localhost:8883";
 		mqtt = new MqttAsyncClient(url, "LambdaDevice", new MemoryPersistence());
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setKeepAliveInterval(20);
@@ -82,8 +82,7 @@ public class WebServer {
 	}
 
 	private void handleFetch(RoutingContext context) {
-		ScanRequest scanRequest = new ScanRequest().withTableName(sensorTableName).withAttributesToGet("sensor",
-				"state");
+		ScanRequest scanRequest = new ScanRequest().withTableName(sensorTableName);
 		db.scanAsync(scanRequest, new AsyncHandler<ScanRequest, ScanResult>() {
 			@Override
 			public void onSuccess(ScanRequest request, ScanResult result) {
@@ -93,6 +92,14 @@ public class WebServer {
 					if (stateValue != null) {
 						JsonObject sensorObj = new JsonObject();
 						sensorObj.put("state", Integer.valueOf(stateValue.getN()));
+
+						if (item.get("time") != null) {
+							long time = Long.parseLong(item.get("time").getN());
+							long count = Long.parseLong(item.get("count").getN());
+							long thresh = time / count;
+							sensorObj.put("thresh", thresh);
+						}
+
 						states.put(item.get("sensor").getS(), sensorObj);
 					}
 				}

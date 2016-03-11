@@ -57,10 +57,12 @@ public class SensorAdapter extends BaseAdapter {
 
 			final String sensorId = "sensor" + getItem(position);
 			int state = 0;
+			long thresh = 20000;
 			if (sensors != null) {
-				JsonElement stateObj = sensors.get(sensorId);
-				if (stateObj != null) {
-					state = stateObj.getAsJsonObject().get("state").getAsInt();
+				JsonElement sensorObj = sensors.get(sensorId);
+				if (sensorObj != null) {
+					state = sensorObj.getAsJsonObject().get("state").getAsInt();
+					thresh = sensorObj.getAsJsonObject().get("thresh").getAsLong();
 				}
 			}
 			int color;
@@ -77,7 +79,8 @@ public class SensorAdapter extends BaseAdapter {
 			view.setBackgroundColor(color);
 
 			TextView textView = (TextView) view.findViewById(android.R.id.text1);
-			textView.setText("Sensor " + getItem(position));
+			String text = "Sensor " + getItem(position) + " (" + thresh + ")";
+			textView.setText(text);
 
 			view.setOnTouchListener(new OnTouchListener() {
 				@Override
